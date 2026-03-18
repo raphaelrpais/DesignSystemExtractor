@@ -1,2 +1,37 @@
-- name: Run dembrandt
-  run: npx dembrandt stripe.com --save-output --json-only > output.json
+name: Extrair Design System com Dembrandt
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL do site (ex: stripe.com)'
+        required: true
+        default: 'stripe.com'
+
+jobs:
+  extrair:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dembrandt
+        run: npm install -g dembrandt
+
+      - name: Instalar Firefox (para contornar bot detection)
+        run: npx playwright install firefox
+
+      - name: Rodar extracao
+        run: |
+          mkdir -p output
+          npx dembrandt "${{ github.event.inputs.url }}" --save-output --no-sandbox --browser=firefox || true
+
+      - name: Salvar resultado
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-system
+          path: output/
+          retention-days: 30
