@@ -5,26 +5,33 @@ env:
 
 on:
   workflow_dispatch:
-    inputs:
-      sites:
-        description: 'Sites a extrair (separados por vírgula, ou "todos")'
-        required: true
-        default: 'todos'
 
 jobs:
-  extrair:
+  # Job 1: lê o sites.txt e monta a lista dinâmica
+  preparar:
     runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.ler-sites.outputs.sites }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Ler sites.txt
+        id: ler-sites
+        run: |
+          # Remove linhas em branco e comentários (#), gera JSON array
+          SITES=$(grep -v '^\s*#' sites.txt | grep -v '^\s*$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "sites=$SITES" >> $GITHUB_OUTPUT
+          echo "Sites encontrados: $SITES"
+
+  # Job 2: roda em paralelo para cada site
+  extrair:
+    needs: preparar
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        site:
-          - stripe.com
-          - neofin.com.br
-          - stone.com.br
-          - abacatepay.com
-          - nubank.com.br
-          - mercadopago.com.br
+        site: ${{ fromJson(needs.preparar.outputs.sites) }}
 
     steps:
       - name: Checkout
@@ -41,16 +48,18 @@ jobs:
           cd extractor && npm install
           npx playwright install chromium firefox
 
-      - name: Extrair tokens de design (dembrandt)
+      - name: Extrair tokens (dembrandt)
         run: |
+          echo "→ dembrandt em ${{ matrix.site }}"
           npx dembrandt ${{ matrix.site }} \
             --save-output \
             --no-sandbox \
             --browser=firefox \
             --slow || true
 
-      - name: Extrair padroes de interacao (Playwright)
+      - name: Extrair interacoes (Playwright stealth)
         run: |
+          echo "→ interaction-extractor em ${{ matrix.site }}"
           mkdir -p output/${{ matrix.site }}
           node extractor/interaction-extractor.js \
             "https://${{ matrix.site }}" \
