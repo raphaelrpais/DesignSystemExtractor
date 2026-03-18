@@ -14,6 +14,7 @@ on:
 jobs:
   extrair:
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
@@ -26,53 +27,40 @@ jobs:
           - mercadopago.com.br
 
     steps:
-      # 1. Baixa os scripts do repositório
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Node.js
       - name: Instalar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      # 3. Instala dembrandt + dependências do extractor
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: |
           npm install -g dembrandt
           cd extractor && npm install
           npx playwright install chromium firefox
 
-      # 4. Roda o dembrandt
       - name: Extrair tokens de design (dembrandt)
         run: |
-          echo "→ Rodando dembrandt em ${{ matrix.site }}"
           npx dembrandt ${{ matrix.site }} \
             --save-output \
             --no-sandbox \
             --browser=firefox \
             --slow || true
 
-      # 5. Roda o interaction extractor
-      - name: Extrair padrões de interação (Playwright)
+      - name: Extrair padroes de interacao (Playwright)
         run: |
-          echo "→ Rodando interaction extractor em ${{ matrix.site }}"
-          SITE_URL="https://${{ matrix.site }}"
-          SITE_DIR="output/${{ matrix.site }}"
-          mkdir -p "$SITE_DIR"
-          node extractor/interaction-extractor.js "$SITE_URL" "output" || true
+          mkdir -p output/${{ matrix.site }}
+          node extractor/interaction-extractor.js \
+            "https://${{ matrix.site }}" \
+            "output" || true
 
-      # 6. Combina os dois outputs em um único Markdown
       - name: Combinar em Markdown
         run: |
-          SITE_DIR="output/${{ matrix.site }}"
-          if [ -d "$SITE_DIR" ]; then
-            node extractor/combine-reports.js "$SITE_DIR" || true
-          else
-            echo "⚠️ Diretório $SITE_DIR não encontrado, pulando combinação."
-          fi
+          node extractor/combine-reports.js \
+            "output/${{ matrix.site }}" || true
 
-      # 7. Faz upload do resultado
       - name: Salvar artefato
         uses: actions/upload-artifact@v4
         with:
