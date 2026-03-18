@@ -1,0 +1,12 @@
+{
+  "name": "design-system-extractor",
+  "version": "1.0.0",
+  "description": "Extrai design tokens e padrões de interação de sites",
+  "scripts": {
+    "extract": "node interaction-extractor.js",
+    "combine": "node combine-reports.js"
+  },
+  "dependencies": {
+    "playwright": "^1.42.0"
+  }
+}
