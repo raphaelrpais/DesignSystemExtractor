@@ -1,0 +1,10 @@
+# Lista de sites para extração de design system
+# Uma URL por linha — adicione ou remova à vontade
+# Linhas começando com # são ignoradas
+
+stripe.com
+neofin.com.br
+stone.com.br
+abacatepay.com
+nubank.com.br
+mercadopago.com.br
