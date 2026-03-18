@@ -1,0 +1,82 @@
+name: Extrair Design System Completo
+
+on:
+  workflow_dispatch:
+    inputs:
+      sites:
+        description: 'Sites a extrair (separados por vírgula, ou "todos")'
+        required: true
+        default: 'todos'
+
+jobs:
+  extrair:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        site:
+          - stripe.com
+          - neofin.com.br
+          - stone.com.br
+          - abacatepay.com
+          - nubank.com.br
+          - mercadopago.com.br
+
+    steps:
+      # 1. Baixa os scripts do repositório
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Node.js
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 3. Instala dembrandt + dependências do extractor
+      - name: Instalar dependências
+        run: |
+          npm install -g dembrandt
+          cd extractor && npm install
+          npx playwright install chromium firefox
+
+      # 4. Roda o dembrandt
+      - name: Extrair tokens de design (dembrandt)
+        run: |
+          echo "→ Rodando dembrandt em ${{ matrix.site }}"
+          npx dembrandt ${{ matrix.site }} \
+            --save-output \
+            --no-sandbox \
+            --browser=firefox \
+            --slow || true
+
+      # 5. Roda o interaction extractor
+      - name: Extrair padrões de interação (Playwright)
+        run: |
+          echo "→ Rodando interaction extractor em ${{ matrix.site }}"
+          SITE_URL="https://${{ matrix.site }}"
+          SITE_DIR="output/${{ matrix.site }}"
+          mkdir -p "$SITE_DIR"
+          node extractor/interaction-extractor.js "$SITE_URL" "output" || true
+
+      # 6. Combina os dois outputs em um único Markdown
+      - name: Combinar em Markdown
+        run: |
+          SITE_DIR="output/${{ matrix.site }}"
+          if [ -d "$SITE_DIR" ]; then
+            node extractor/combine-reports.js "$SITE_DIR" || true
+          else
+            echo "⚠️ Diretório $SITE_DIR não encontrado, pulando combinação."
+          fi
+
+      # 7. Faz upload do resultado
+      - name: Salvar artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-system-${{ matrix.site }}
+          path: output/${{ matrix.site }}/
+          retention-days: 30
+          if-no-files-found: warn
