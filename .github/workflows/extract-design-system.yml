@@ -1,5 +1,8 @@
 name: Extrair Design System Completo
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,9 +14,6 @@ on:
 jobs:
   extrair:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     strategy:
       fail-fast: false
       matrix:
